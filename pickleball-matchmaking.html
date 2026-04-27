@@ -900,6 +900,37 @@ function renderSchedule(pairs, schedule, courts, rounds) {
     `;
   }).join('');
 }
+  // Fungsi untuk menyimpan data ke memori HP
+function simpanKeMemori() {
+    const data = {
+        players,
+        queueXD,
+        queuePA,
+        currentMatch
+    };
+    localStorage.setItem('data_pickleball', JSON.stringify(data));
+}
+
+// Fungsi untuk memuat data saat aplikasi dibuka
+window.onload = function() {
+    const dataTersimpan = localStorage.getItem('data_pickleball');
+    if (dataTersimpan) {
+        const d = JSON.parse(dataTersimpan);
+        players = d.players;
+        queueXD = d.queueXD;
+        queuePA = d.queuePA;
+        currentMatch = d.currentMatch;
+        
+        document.getElementById('setupSection').style.display = 'none';
+        document.getElementById('mainGame').style.display = 'block';
+        updateDisplay('xd');
+        updateDisplay('pa');
+        updateLeaderboard();
+    }
+};
+
+// Update fungsi finishMatch kamu agar memanggil simpanKeMemori()
+// (Tambahkan baris simpanKeMemori(); di akhir fungsi finishMatch dan applyEdit)
 </script>
 </body>
 </html>
