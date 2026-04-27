@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pickleball Matchmaking</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #f6c90e;
+    --accent2: #ff6b35;
+    --blue: #58a6ff;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --green: #3fb950;
+    --purple: #d2a8ff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(246,201,14,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(246,201,14,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  header .badge {
+    display: inline-block;
+    background: rgba(246,201,14,0.1);
+    border: 1px solid rgba(246,201,14,0.3);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 16px;
+  }
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(48px, 10vw, 88px);
+    letter-spacing: 4px;
+    line-height: 0.9;
+    color: var(--accent);
+    text-shadow: 0 0 60px rgba(246,201,14,0.3);
+  }
+  header h1 span { color: var(--text); }
+  header p {
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 12px;
+  }
+
+  /* Step indicator */
+  .steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 40px;
+  }
+  .step-dot {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+    position: relative;
+  }
+  .step-dot.active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #000;
+    box-shadow: 0 0 16px rgba(246,201,14,0.4);
+  }
+  .step-dot.done {
+    border-color: var(--green);
+    background: var(--green);
+    color: #000;
+  }
+  .step-line {
+    width: 60px; height: 2px;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+  .step-line.done { background: var(--green); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .card-sub {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+
+  /* Inputs */
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  @media(max-width: 500px) { .input-row { grid-template-columns: 1fr; } }
+
+  .input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  input[type="text"], input[type="number"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 10px 14px;
+    width: 100%;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+
+  /* Player list */
+  .player-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .player-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+  .player-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .player-avatar.male { background: rgba(88,166,255,0.15); color: var(--blue); }
+  .player-avatar.female { background: rgba(210,168,255,0.15); color: var(--purple); }
+  .player-name { flex: 1; font-weight: 500; }
+  .player-remove {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 16px; line-height: 1;
+    padding: 0; transition: color 0.2s;
+  }
+  .player-remove:hover { color: var(--accent2); }
+
+  /* Gender tag */
+  .tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .tag.M { background: rgba(88,166,255,0.1); color: var(--blue); }
+  .tag.F { background: rgba(210,168,255,0.1); color: var(--purple); }
+
+  /* Buttons */
+  .btn {
+    border: none; border-radius: 8px;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-weight: 600; font-size: 14px;
+    padding: 12px 24px;
+    transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+  }
+  .btn-primary:hover { background: #ffd93d; box-shadow: 0 0 20px rgba(246,201,14,0.3); }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger {
+    background: rgba(255,107,53,0.1);
+    color: var(--accent2);
+    border: 1px solid rgba(255,107,53,0.3);
+  }
+  .btn-danger:hover { background: rgba(255,107,53,0.2); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .stat-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .stat-pill .num { font-weight: 700; font-size: 14px; }
+  .stat-pill .num.blue { color: var(--blue); }
+  .stat-pill .num.purple { color: var(--purple); }
+  .stat-pill .num.yellow { color: var(--accent); }
+
+  /* Divider */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 20px 0;
+  }
+
+  /* Schedule output */
+  .schedule-header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .schedule-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    letter-spacing: 4px;
+    color: var(--accent);
+  }
+  .schedule-meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+  /* Pairs section */
+  .pairs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .pair-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .pair-card:hover { border-color: var(--accent); }
+  .pair-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .pair-card.mixed .pair-label { color: var(--purple); }
+  .pair-card.male .pair-label { color: var(--blue); }
+  .pair-names { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .pair-type {
+    font-size: 10px; font-weight: 600; letter-spacing: 1px;
+    text-transform: uppercase; margin-top: 6px;
+  }
+  .pair-card.mixed .pair-type { color: var(--purple); }
+  .pair-card.male .pair-type { color: var(--blue); }
+
+  /* Rounds */
+  .round-block {
+    margin-bottom: 16px;
+    animation: fadeIn 0.3s ease;
+  }
+  .round-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 10px;
+  }
+  .round-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    white-space: nowrap;
+  }
+  .round-line { flex: 1; height: 1px; background: var(--border); }
+
+  .courts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  @media(max-width: 480px) { .courts-row { grid-template-columns: 1fr; } }
+
+  .court-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    transition: border-color 0.2s;
+  }
+  .court-card:hover { border-color: rgba(246,201,14,0.4); }
+  .court-name {
+    font-size: 10px; font-weight: 600; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .match-vs {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px;
+  }
+  .match-pair {
+    flex: 1;
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 7px 10px;
+    text-align: center;
+  }
+  .match-pair-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+  .match-pair-label.mixed { color: var(--purple); }
+  .match-pair-label.male { color: var(--blue); }
+  .match-pair-names { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .vs-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 2px;
+    color: var(--accent2);
+    flex-shrink: 0;
+  }
+
+  .rest-row {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+  }
+  .rest-chip {
+    font-size: 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 3px 8px;
+    color: var(--muted);
+  }
+
+  /* Alert */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .alert.error { background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.3); color: var(--accent2); }
+  .alert.info { background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3); color: var(--blue); }
+
+  /* Toggle for gender */
+  .gender-toggle {
+    display: flex; gap: 6px;
+  }
+  .gender-btn {
+    flex: 1; padding: 8px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted);
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 600; text-align: center;
+    transition: all 0.15s;
+  }
+  .gender-btn.selected-M { border-color: var(--blue); background: rgba(88,166,255,0.1); color: var(--blue); }
+  .gender-btn.selected-F { border-color: var(--purple); background: rgba(210,168,255,0.1); color: var(--purple); }
+
+  /* Import paste area */
+  .import-toggle {
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; color: var(--muted); font-size: 13px;
+    margin-bottom: 12px; user-select: none;
+    width: fit-content;
+  }
+  .import-toggle:hover { color: var(--accent); }
+  .import-toggle .arrow { font-size: 10px; transition: transform 0.2s; }
+  .import-toggle.open .arrow { transform: rotate(90deg); }
+
+  .import-box {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.2s ease;
+  }
+  .import-box textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 10px 14px;
+    resize: vertical;
+    min-height: 110px;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.6;
+  }
+  .import-box textarea:focus { border-color: var(--accent); }
+  .import-hint {
+    font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.7;
+  }
+  .import-hint b { color: var(--purple); }
+  .import-preview {
+    margin-top: 10px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .preview-chip {
+    font-size: 11px;
+    border-radius: 5px;
+    padding: 3px 9px;
+    display: flex; align-items: center; gap: 5px;
+    font-weight: 500;
+  }
+  .preview-chip.M { background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.2); color: var(--blue); }
+  .preview-chip.F { background: rgba(210,168,255,0.1); border: 1px solid rgba(210,168,255,0.2); color: var(--purple); }
+  .preview-chip.dup { background: rgba(255,107,53,0.1); border: 1px solid rgba(255,107,53,0.2); color: var(--accent2); text-decoration: line-through; }
+
+  /* Section label */
+  .section-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px; letter-spacing: 2px;
+    color: var(--text); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  /* Courts config */
+  .courts-config {
+    display: flex; gap: 10px; align-items: center;
+    margin-bottom: 20px;
+  }
+  .courts-config label { white-space: nowrap; }
+  .num-input {
+    width: 80px !important;
+    text-align: center;
+  }
+
+  /* Print */
+  @media print {
+    body { background: #fff; color: #000; }
+    body::before { display: none; }
+    .no-print { display: none !important; }
+    .card { border: 1px solid #ddd; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .hidden { display: none !important; }
+
+  /* Confetti burst */
+  @keyframes confetti-fall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(80px) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="badge">🏓 Pickleball Generator</div>
+    <h1>MATCH<span>MAKING</span></h1>
+    <p>Input pemain, generate jadwal otomatis — fair & balanced!</p>
+  </header>
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step-dot active" id="s1">1</div>
+    <div class="step-line" id="l1"></div>
+    <div class="step-dot" id="s2">2</div>
+    <div class="step-line" id="l2"></div>
+    <div class="step-dot" id="s3">3</div>
+  </div>
+
+  <!-- STEP 1: Input Pemain -->
+  <div id="step1">
+    <div class="card">
+      <div class="card-title">DAFTAR PEMAIN</div>
+      <div class="card-sub">Masukkan nama pemain satu per satu. Minimal 4 pemain untuk mulai.</div>
+
+      <div class="input-row">
+        <div class="input-group">
+          <label>Nama Pemain</label>
+          <input type="text" id="nameInput" placeholder="Contoh: Budi" maxlength="24" />
+        </div>
+        <div class="input-group">
+          <label>Jenis Kelamin</label>
+          <div class="gender-toggle">
+            <div class="gender-btn selected-M" id="btnM" onclick="selectGender('M')">♂ Laki-laki</div>
+            <div class="gender-btn" id="btnF" onclick="selectGender('F')">♀ Perempuan</div>
+          </div>
+        </div>
+      </div>
+      <div id="addError" class="alert error hidden"></div>
+      <button class="btn btn-primary" onclick="addPlayer()" id="addBtn">+ Tambah Pemain</button>
+
+      <hr class="divider">
+
+      <div class="stats-bar">
+        <div class="stat-pill">Total: <span class="num yellow" id="totalCount">0</span></div>
+        <div class="stat-pill">♂ <span class="num blue" id="maleCount">0</span> Laki-laki</div>
+        <div class="stat-pill">♀ <span class="num purple" id="femaleCount">0</span> Perempuan</div>
+      </div>
+
+      <div class="player-grid" id="playerGrid">
+        <div style="color:var(--muted);font-size:13px;grid-column:1/-1;padding:16px 0;text-align:center;">
+          Belum ada pemain. Tambahkan nama di atas ↑
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="goStep2()" id="nextBtn" disabled>Lanjut ke Setting →</button>
+        <button class="btn btn-danger" onclick="clearAll()">🗑 Hapus Semua</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Setting -->
+  <div id="step2" class="hidden">
+    <div class="card">
+      <div class="card-title">PENGATURAN TURNAMEN</div>
+      <div class="card-sub">Sesuaikan jumlah court dan format permainan.</div>
+
+      <div class="input-row">
+        <div class="input-group">
+          <label>Jumlah Court</label>
+          <input type="number" id="courtCount" value="2" min="1" max="10" class="num-input" />
+        </div>
+        <div class="input-group">
+          <label>Jumlah Ronde</label>
+          <input type="number" id="roundCount" value="7" min="1" max="30" class="num-input" />
+        </div>
+      </div>
+
+      <div id="settingInfo" class="alert info"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="generateSchedule()">⚡ Generate Jadwal</button>
+        <button class="btn btn-secondary" onclick="goStep1()">← Kembali</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Jadwal -->
+  <div id="step3" class="hidden">
+    <div class="card">
+      <div class="schedule-header">
+        <div class="schedule-title" id="schedTitle">JADWAL MAIN</div>
+        <div class="schedule-meta" id="schedMeta"></div>
+      </div>
+
+      <div class="section-label">PASANGAN</div>
+      <div class="pairs-grid" id="pairsGrid"></div>
+
+      <div class="section-label">JADWAL RONDE</div>
+      <div id="roundsContainer"></div>
+
+      <div class="btn-row no-print">
+        <button class="btn btn-primary" onclick="window.print()">🖨 Print Jadwal</button>
+        <button class="btn btn-secondary" onclick="goStep1()">← Edit Pemain</button>
+        <button class="btn btn-secondary" onclick="goStep2()">⚙ Setting</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let players = [];
+let selectedGender = 'M';
+
+function selectGender(g) {
+  selectedGender = g;
+  document.getElementById('btnM').className = 'gender-btn' + (g === 'M' ? ' selected-M' : '');
+  document.getElementById('btnF').className = 'gender-btn' + (g === 'F' ? ' selected-F' : '');
+}
+
+function addPlayer() {
+  const inp = document.getElementById('nameInput');
+  const name = inp.value.trim();
+  const err = document.getElementById('addError');
+  err.classList.add('hidden');
+
+  if (!name) { showError(err, 'Nama tidak boleh kosong!'); return; }
+  if (players.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+    showError(err, 'Nama "' + name + '" sudah ada!'); return;
+  }
+
+  players.push({ name, gender: selectedGender });
+  inp.value = '';
+  inp.focus();
+  renderPlayerGrid();
+  updateStats();
+}
+
+function showError(el, msg) {
+  el.textContent = '⚠ ' + msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+function removePlayer(i) {
+  players.splice(i, 1);
+  renderPlayerGrid();
+  updateStats();
+}
+
+function clearAll() {
+  if (players.length === 0) return;
+  if (confirm('Hapus semua pemain?')) { players = []; renderPlayerGrid(); updateStats(); }
+}
+
+function renderPlayerGrid() {
+  const grid = document.getElementById('playerGrid');
+  if (players.length === 0) {
+    grid.innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:1/-1;padding:16px 0;text-align:center;">Belum ada pemain. Tambahkan nama di atas ↑</div>';
+    return;
+  }
+  grid.innerHTML = players.map((p, i) => `
+    <div class="player-item">
+      <div class="player-avatar ${p.gender === 'M' ? 'male' : 'female'}">${p.name[0].toUpperCase()}</div>
+      <div class="player-name">${p.name}</div>
+      <div class="tag ${p.gender}">${p.gender === 'M' ? '♂' : '♀'}</div>
+      <button class="player-remove" onclick="removePlayer(${i})">×</button>
+    </div>
+  `).join('');
+}
+
+function updateStats() {
+  const m = players.filter(p => p.gender === 'M').length;
+  const f = players.filter(p => p.gender === 'F').length;
+  document.getElementById('totalCount').textContent = players.length;
+  document.getElementById('maleCount').textContent = m;
+  document.getElementById('femaleCount').textContent = f;
+  document.getElementById('nextBtn').disabled = players.length < 4;
+}
+
+// Keyboard: enter to add
+document.getElementById('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addPlayer();
+});
+
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('step'+i).classList.toggle('hidden', i !== n);
+    const dot = document.getElementById('s'+i);
+    dot.className = 'step-dot' + (i < n ? ' done' : i === n ? ' active' : '');
+    if (i < 3) document.getElementById('l'+i).className = 'step-line' + (i < n ? ' done' : '');
+  });
+}
+
+function goStep1() { setStep(1); }
+function goStep2() {
+  if (players.length < 4) return;
+  setStep(2);
+  updateSettingInfo();
+}
+
+function updateSettingInfo() {
+  const courts = parseInt(document.getElementById('courtCount').value) || 2;
+  const rounds = parseInt(document.getElementById('roundCount').value) || 7;
+  const pairs = Math.floor(players.length / 2);
+  const playing = courts * 2;
+  const resting = pairs - playing;
+  const info = document.getElementById('settingInfo');
+  info.innerHTML = `
+    <span>👥</span>
+    <span><b>${players.length} pemain</b> → <b>${pairs} pasang</b> &nbsp;|&nbsp;
+    Per ronde: <b>${Math.min(playing, pairs)} pasang main</b> di ${Math.min(courts, Math.floor(pairs/2))} court
+    ${resting > 0 ? `, <b>${resting} pasang istirahat</b>` : ''} &nbsp;|&nbsp;
+    Total ronde: <b>${rounds}</b></span>
+  `;
+}
+
+document.getElementById('courtCount').addEventListener('input', updateSettingInfo);
+document.getElementById('roundCount').addEventListener('input', updateSettingInfo);
+
+// ─── CORE MATCHMAKING ────────────────────────────────────────────────────────
+
+function makePairs(players) {
+  const males = players.filter(p => p.gender === 'M');
+  const females = players.filter(p => p.gender === 'F');
+  const pairs = [];
+
+  // Pair females with males for mixed doubles
+  const mixedCount = Math.min(females.length, Math.floor(males.length / 2));
+  for (let i = 0; i < females.length; i++) {
+    pairs.push({ a: males[i], b: females[i], type: 'mixed', label: String.fromCharCode(65 + pairs.length) });
+  }
+  const usedMales = females.length;
+
+  // Remaining males pair up
+  const remMales = males.slice(usedMales);
+  for (let i = 0; i + 1 < remMales.length; i += 2) {
+    pairs.push({ a: remMales[i], b: remMales[i+1], type: 'male', label: String.fromCharCode(65 + pairs.length) });
+  }
+  // Odd player out — attach to last pair as note
+  if (remMales.length % 2 === 1) {
+    const extra = remMales[remMales.length - 1];
+    // just add as solo pair (will sit out often)
+    pairs.push({ a: extra, b: null, type: 'male', label: String.fromCharCode(65 + pairs.length) });
+  }
+
+  return pairs;
+}
+
+function generateRounds(pairs, courts, rounds) {
+  const n = pairs.length;
+  const matchesPerRound = Math.min(courts, Math.floor(n / 2));
+  const schedule = [];
+
+  // Track how many times each pair has played and faced each other
+  const playCount = Array(n).fill(0);
+  const faceOff = Array.from({length: n}, () => Array(n).fill(0));
+  const restCount = Array(n).fill(0);
+
+  for (let r = 0; r < rounds; r++) {
+    // Sort pairs: least played first, then most rested
+    const order = [...Array(n).keys()].sort((a, b) => playCount[a] - playCount[b] || restCount[b] - restCount[a]);
+    const playing = new Set();
+    const matches = [];
+
+    // Greedily pick matches
+    for (let i = 0; i < order.length && matches.length < matchesPerRound; i++) {
+      const p1 = order[i];
+      if (playing.has(p1) || pairs[p1].b === null) continue;
+      for (let j = i + 1; j < order.length && matches.length < matchesPerRound; j++) {
+        const p2 = order[j];
+        if (playing.has(p2) || pairs[p2].b === null) continue;
+        // Prefer pairs that haven't faced each other yet
+        matches.push([p1, p2]);
+        playing.add(p1);
+        playing.add(p2);
+      }
+    }
+
+    // Update counts
+    for (const [a, b] of matches) {
+      playCount[a]++; playCount[b]++;
+      faceOff[a][b]++; faceOff[b][a]++;
+      restCount[a] = 0; restCount[b] = 0;
+    }
+    for (let i = 0; i < n; i++) {
+      if (!playing.has(i)) restCount[i]++;
+    }
+
+    const resting = [...Array(n).keys()].filter(i => !playing.has(i));
+    schedule.push({ round: r + 1, matches, resting });
+  }
+
+  return schedule;
+}
+
+function generateSchedule() {
+  const courts = parseInt(document.getElementById('courtCount').value) || 2;
+  const rounds = parseInt(document.getElementById('roundCount').value) || 7;
+
+  const pairs = makePairs(players);
+  const schedule = generateRounds(pairs, courts, rounds);
+
+  setStep(3);
+  renderSchedule(pairs, schedule, courts, rounds);
+}
+
+function renderSchedule(pairs, schedule, courts, rounds) {
+  // Title
+  document.getElementById('schedTitle').textContent = 'JADWAL MAIN';
+  document.getElementById('schedMeta').textContent =
+    `${players.length} pemain · ${pairs.length} pasang · ${courts} court · ${rounds} ronde`;
+
+  // Pairs
+  const pg = document.getElementById('pairsGrid');
+  pg.innerHTML = pairs.map(p => `
+    <div class="pair-card ${p.type}">
+      <div class="pair-label">${p.label}</div>
+      <div class="pair-names">
+        ${p.a.name}${p.b ? '<br>' + p.b.name : '<br><span style="color:var(--accent2);font-size:10px;">solo</span>'}
+      </div>
+      <div class="pair-type">${p.type === 'mixed' ? '⚡ Campuran' : '♂ Putra'}</div>
+    </div>
+  `).join('');
+
+  // Rounds
+  const rc = document.getElementById('roundsContainer');
+  rc.innerHTML = schedule.map(r => {
+    const courtsHtml = r.matches.map((m, ci) => {
+      const p1 = pairs[m[0]], p2 = pairs[m[1]];
+      return `
+        <div class="court-card">
+          <div class="court-name">🏓 Court ${ci + 1}</div>
+          <div class="match-vs">
+            <div class="match-pair">
+              <div class="match-pair-label ${p1.type}">${p1.label}</div>
+              <div class="match-pair-names">${p1.a.name}${p1.b ? ' & ' + p1.b.name : ''}</div>
+            </div>
+            <div class="vs-badge">VS</div>
+            <div class="match-pair">
+              <div class="match-pair-label ${p2.type}">${p2.label}</div>
+              <div class="match-pair-names">${p2.a.name}${p2.b ? ' & ' + p2.b.name : ''}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const restHtml = r.resting.length > 0 ? `
+      <div class="rest-row">
+        <span style="font-size:11px;color:var(--muted);margin-right:4px;">Istirahat:</span>
+        ${r.resting.map(i => `<span class="rest-chip">${pairs[i].label} (${pairs[i].a.name}${pairs[i].b ? ' & '+pairs[i].b.name : ''})</span>`).join('')}
+      </div>
+    ` : '';
+
+    return `
+      <div class="round-block">
+        <div class="round-header">
+          <div class="round-num">RONDE ${r.round}</div>
+          <div class="round-line"></div>
+        </div>
+        <div class="courts-row">${courtsHtml}</div>
+        ${restHtml}
+      </div>
+    `;
+  }).join('');
+}
+</script>
+</body>
+</html>
