@@ -2,11 +2,41 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pickleball Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <title>Pickleball Pro App</title>
     <style>
         :root { --primary: #2ecc71; --secondary: #3498db; --dark: #2c3e50; --light: #f4f7f6; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--light); padding: 15px; color: var(--dark); margin: 0; }
+        
+        /* MENCEGAH REFRESH SAAT SCROLL */
+        html, body { 
+            overscroll-behavior-y: contain; /* Mematikan pull-to-refresh di Chrome/Android */
+            overflow-x: hidden;
+            position: fixed; /* Mencegah pergeseran seluruh layar */
+            width: 100%;
+            height: 100%;
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--light); 
+            padding: 0; 
+            margin: 0; 
+            color: var(--dark);
+        }
+
+        /* Area Scroll Khusus agar aplikasi tetap bisa di-scroll tapi tidak refresh */
+        .app-scroll-area {
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
         .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
         .tab-container { display: flex; gap: 10px; margin-bottom: 20px; }
@@ -32,7 +62,6 @@
         .court.blue { border-top-color: var(--secondary); }
         .match-box { background: #f0f2f5; border-radius: 8px; padding: 12px; margin: 10px 0; font-weight: bold; }
 
-        /* Edit Panel */
         .edit-panel { display: none; background: #fff; padding: 10px; border: 2px solid #ffe58f; border-radius: 8px; margin-top: 10px; text-align: left; }
         .player-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; max-height: 150px; overflow-y: auto; margin: 10px 0; font-size: 0.8em; }
         .p-opt { padding: 8px; border-radius: 4px; background: #f9f9f9; border: 1px solid #eee; cursor: pointer; }
@@ -55,72 +84,75 @@
 </head>
 <body>
 
-<div class="container">
-    <h1 style="text-align: center;">Pickleball Pro</h1>
+<div class="app-scroll-area">
+    <div class="container">
+        <h1 style="text-align: center;">Pickleball Pro App</h1>
 
-    <div id="setupSection">
-        <div class="tab-container">
-            <button class="tab-btn active" id="tabManual" onclick="showSection('manual')">Input Manual</button>
-            <button class="tab-btn" id="tabPaste" onclick="showSection('paste')">Paste Nama</button>
+        <div id="setupSection">
+            <div class="tab-container">
+                <button class="tab-btn active" id="tabManual" onclick="showSection('manual')">Input Manual</button>
+                <button class="tab-btn" id="tabPaste" onclick="showSection('paste')">Paste Nama</button>
+            </div>
+            <div id="sectionManual" class="setup-card">
+                <input type="text" id="pName" placeholder="Nama Pemain..." style="margin-bottom:10px;">
+                <div class="input-group"><label>Gender</label><div class="option-group">
+                    <label><input type="radio" name="pGender" value="Pria" checked><span class="option-btn">Pria</span></label>
+                    <label><input type="radio" name="pGender" value="Wanita"><span class="option-btn">Wanita</span></label>
+                </div></div>
+                <div class="input-group"><label>Skill</label><div class="option-group">
+                    <label><input type="radio" name="pSkill" value="Beginner" checked><span class="option-btn">Beg.</span></label>
+                    <label><input type="radio" name="pSkill" value="Intermediate"><span class="option-btn">Int.</span></label>
+                    <label><input type="radio" name="pSkill" value="Advanced"><span class="option-btn">Adv.</span></label>
+                </div></div>
+                <button class="btn-action btn-add" onclick="addNewPlayer()">Tambah</button>
+                <div id="playerPreview" style="margin-top:10px; font-size:0.8em;"></div>
+            </div>
+            <div id="sectionPaste" class="setup-card hidden"><textarea id="rawNames" placeholder="Contoh: Andi, Siti cewe..."></textarea></div>
+            <button class="btn-action btn-start" onclick="startApp()">Mulai</button>
         </div>
-        <div id="sectionManual" class="setup-card">
-            <input type="text" id="pName" placeholder="Nama Pemain..." style="margin-bottom:10px;">
-            <div class="input-group"><label>Gender</label><div class="option-group">
-                <label><input type="radio" name="pGender" value="Pria" checked><span class="option-btn">Pria</span></label>
-                <label><input type="radio" name="pGender" value="Wanita"><span class="option-btn">Wanita</span></label>
-            </div></div>
-            <div class="input-group"><label>Skill</label><div class="option-group">
-                <label><input type="radio" name="pSkill" value="Beginner" checked><span class="option-btn">Beg.</span></label>
-                <label><input type="radio" name="pSkill" value="Intermediate"><span class="option-btn">Int.</span></label>
-                <label><input type="radio" name="pSkill" value="Advanced"><span class="option-btn">Adv.</span></label>
-            </div></div>
-            <button class="btn-action btn-add" onclick="addNewPlayer()">Tambah</button>
-            <div id="playerPreview" style="margin-top:10px; font-size:0.8em;"></div>
-        </div>
-        <div id="sectionPaste" class="setup-card hidden"><textarea id="rawNames" placeholder="Contoh: Andi, Siti cewe..."></textarea></div>
-        <button class="btn-action btn-start" onclick="startApp()">Mulai</button>
-    </div>
 
-    <div id="mainGame" class="hidden">
-        <div class="court-container">
-            <div class="court">
-                <h3>Mix Double</h3>
-                <div id="display-xd" class="match-box"></div>
-                <div id="edit-xd" class="edit-panel">
-                    <strong>Ganti Pemain (2 Pria, 2 Wanita):</strong>
-                    <div id="grid-xd" class="player-grid"></div>
-                    <button class="btn-action btn-add" onclick="applyEdit('xd')">Update</button>
+        <div id="mainGame" class="hidden">
+            <div class="court-container">
+                <div class="court">
+                    <h3>Mix Double</h3>
+                    <div id="display-xd" class="match-box"></div>
+                    <div id="edit-xd" class="edit-panel">
+                        <strong>Ganti Pemain (2 Pria, 2 Wanita):</strong>
+                        <div id="grid-xd" class="player-grid"></div>
+                        <button class="btn-action btn-add" onclick="applyEdit('xd')">Update</button>
+                    </div>
+                    <div style="display:flex; gap:5px;"><input type="number" id="sc-xd-1" style="width:50%;" placeholder="S1"><input type="number" id="sc-xd-2" style="width:50%;" placeholder="S2"></div>
+                    <button class="btn-action btn-save" onclick="saveScore('xd')">Simpan</button>
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button class="btn-action btn-tool" onclick="shuffleMatch('xd')">Acak</button>
+                        <button class="btn-action btn-tool" onclick="toggleEdit('xd')">Edit</button>
+                    </div>
                 </div>
-                <div style="display:flex; gap:5px;"><input type="number" id="sc-xd-1" style="width:50%;" placeholder="S1"><input type="number" id="sc-xd-2" style="width:50%;" placeholder="S2"></div>
-                <button class="btn-action btn-save" onclick="saveScore('xd')">Simpan</button>
-                <div style="display:flex; gap:5px; margin-top:5px;">
-                    <button class="btn-action btn-tool" onclick="shuffleMatch('xd')">Acak</button>
-                    <button class="btn-action btn-tool" onclick="toggleEdit('xd')">Edit</button>
+
+                <div class="court blue">
+                    <h3>Men Double</h3>
+                    <div id="display-pa" class="match-box"></div>
+                    <div id="edit-pa" class="edit-panel">
+                        <strong>Ganti Pemain (4 Pria):</strong>
+                        <div id="grid-pa" class="player-grid"></div>
+                        <button class="btn-action btn-add" onclick="applyEdit('pa')">Update</button>
+                    </div>
+                    <div style="display:flex; gap:5px;"><input type="number" id="sc-pa-1" style="width:50%;" placeholder="S1"><input type="number" id="sc-pa-2" style="width:50%;" placeholder="S2"></div>
+                    <button class="btn-action btn-save" onclick="saveScore('pa')">Simpan</button>
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button class="btn-action btn-tool" onclick="shuffleMatch('pa')">Acak</button>
+                        <button class="btn-action btn-tool" onclick="toggleEdit('pa')">Edit</button>
+                    </div>
                 </div>
             </div>
-
-            <div class="court blue">
-                <h3>Men Double</h3>
-                <div id="display-pa" class="match-box"></div>
-                <div id="edit-pa" class="edit-panel">
-                    <strong>Ganti Pemain (4 Pria):</strong>
-                    <div id="grid-pa" class="player-grid"></div>
-                    <button class="btn-action btn-add" onclick="applyEdit('pa')">Update</button>
-                </div>
-                <div style="display:flex; gap:5px;"><input type="number" id="sc-pa-1" style="width:50%;" placeholder="S1"><input type="number" id="sc-pa-2" style="width:50%;" placeholder="S2"></div>
-                <button class="btn-action btn-save" onclick="saveScore('pa')">Simpan</button>
-                <div style="display:flex; gap:5px; margin-top:5px;">
-                    <button class="btn-action btn-tool" onclick="shuffleMatch('pa')">Acak</button>
-                    <button class="btn-action btn-tool" onclick="toggleEdit('pa')">Edit</button>
-                </div>
-            </div>
+            <table id="lb"><thead><tr><th>Nama</th><th>M</th><th>P</th></tr></thead><tbody id="leaderboardBody"></tbody></table>
+            <button onclick="localStorage.clear(); location.reload();" style="color:red; margin-top:30px; border:none; background:none; text-decoration:underline; width:100%;">Reset Sesi</button>
         </div>
-        <table id="lb"><thead><tr><th>Nama</th><th>M</th><th>P</th></tr></thead><tbody id="leaderboardBody"></tbody></table>
-        <button onclick="localStorage.clear(); location.reload();" style="color:red; margin-top:30px; border:none; background:none; text-decoration:underline; width:100%;">Reset</button>
     </div>
 </div>
 
 <script>
+    /* LOGIKA SAMA SEPERTI SEBELUMNYA */
     let players = {}; let queueXD = []; let queuePA = []; let currentMatch = { xd: [], pa: [] };
 
     function showSection(t) {
