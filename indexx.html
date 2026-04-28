@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    
+    <title>Pickleball Match Maker</title>
+    <style>
+        :root { --primary: #2ecc71; --secondary: #3498db; --dark: #2c3e50; --light: #f4f7f6; --win: #27ae60; --loss: #e74c3c; }
+        
+        html, body { 
+            overscroll-behavior-y: contain;
+            overflow-x: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: var(--light); 
+            padding: 0; 
+            margin: 0; 
+            color: var(--dark);
+        }
+
+        .app-scroll-area {
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        .tab-container { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: #ddd; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .tab-btn.active { background: var(--secondary); color: white; }
+
+        .setup-card { background: #f9f9f9; padding: 15px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 0.85em; }
+        
+        input[type="text"], input[type="number"], textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
+        textarea { height: 100px; }
+
+        .option-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .option-group label { flex: 1; min-width: 70px; text-align: center; cursor: pointer; }
+        .option-group input { display: none; }
+        .option-btn { display: block; padding: 8px; background: white; border: 2px solid #ddd; border-radius: 8px; font-size: 0.85em; }
+        .option-group input:checked + .option-btn { border-color: var(--secondary); background: var(--secondary); color: white; font-weight: bold; }
+
+        .court-container { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
+        @media(min-width: 600px) { .court-container { grid-template-columns: 1fr 1fr; } }
+        .court { border-top: 8px solid var(--primary); background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
+        .court.blue { border-top-color: var(--secondary); }
+        .match-box { background: #f0f2f5; border-radius: 8px; padding: 12px; margin: 10px 0; font-weight: bold; }
+
+        .edit-panel { display: none; background: #fff; padding: 10px; border: 2px solid #ffe58f; border-radius: 8px; margin-top: 10px; text-align: left; }
+        .player-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; max-height: 150px; overflow-y: auto; margin: 10px 0; font-size: 0.8em; }
+        .p-opt { padding: 8px; border-radius: 4px; background: #f9f9f9; border: 1px solid #eee; cursor: pointer; }
+        .p-opt.selected { background: #e8f5e9; border-color: var(--primary); font-weight: bold; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.8em; }
+        th, td { padding: 8px; text-align: center; border-bottom: 1px solid #eee; }
+        th { background: var(--dark); color: white; }
+        .bg-pria { background-color: #f0faff !important; }
+        .bg-wanita { background-color: #fff0f3 !important; }
+
+        button.btn-action { cursor: pointer; padding: 12px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-top: 5px; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-start { background: var(--dark); color: white; }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-tool { background: #95a5a6; color: white; font-size: 0.75em; padding: 8px; }
+        
+        .history-section { margin-top: 30px; padding: 15px; background: #eee; border-radius: 10px; display: none; }
+        .history-item { background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; font-size: 0.85em; border-left: 5px solid var(--secondary); }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-scroll-area">
+    <div class="container">
+        <h1 style="text-align: center;">Pickleball Match Maker</h1>
+
+        <div id="setupSection">
+            <div class="tab-container">
+                <button class="tab-btn active" id="tabManual" onclick="showSection('manual')">Input Manual</button>
+                <button class="tab-btn" id="tabPaste" onclick="showSection('paste')">Paste Nama</button>
+            </div>
+            <div id="sectionManual" class="setup-card">
+                <input type="text" id="pName" placeholder="Nama Pemain..." style="margin-bottom:10px;">
+                <div class="input-group"><label>Gender</label><div class="option-group">
+                    <label><input type="radio" name="pGender" value="Pria" checked><span class="option-btn">Pria</span></label>
+                    <label><input type="radio" name="pGender" value="Wanita"><span class="option-btn">Wanita</span></label>
+                </div></div>
+                <div class="input-group"><label>Skill</label><div class="option-group">
+                    <label><input type="radio" name="pSkill" value="Beginner" checked><span class="option-btn">Beg.</span></label>
+                    <label><input type="radio" name="pSkill" value="Intermediate"><span class="option-btn">Int.</span></label>
+                    <label><input type="radio" name="pSkill" value="Advanced"><span class="option-btn">Adv.</span></label>
+                </div></div>
+                <button class="btn-action btn-add" onclick="addNewPlayer()">Tambah</button>
+                <div id="playerPreview" style="margin-top:10px; font-size:0.8em;"></div>
+            </div>
+            <div id="sectionPaste" class="setup-card hidden"><textarea id="rawNames" placeholder="Contoh: Andi, Siti cewe..."></textarea></div>
+            <button class="btn-action btn-start" onclick="startApp()">Mulai</button>
+        </div>
+
+        <div id="mainGame" class="hidden">
+            <div class="court-container">
+                <div class="court">
+                    <h3>Mix Double</h3>
+                    <div id="display-xd" class="match-box"></div>
+                    <div id="edit-xd" class="edit-panel">
+                        <strong>Ganti Pemain (2 Pria, 2 Wanita):</strong>
+                        <div id="grid-xd" class="player-grid"></div>
+                        <button class="btn-action btn-add" onclick="applyEdit('xd')">Update</button>
+                    </div>
+                    <div style="display:flex; gap:5px;"><input type="number" id="sc-xd-1" placeholder="S1"><input type="number" id="sc-xd-2" placeholder="S2"></div>
+                    <button class="btn-action btn-save" onclick="saveScore('xd')">Simpan Skor</button>
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button class="btn-action btn-tool" onclick="shuffleMatch('xd')">Acak</button>
+                        <button class="btn-action btn-tool" onclick="toggleEdit('xd')">Edit</button>
+                    </div>
+                </div>
+
+                <div class="court blue">
+                    <h3>Men Double</h3>
+                    <div id="display-pa" class="match-box"></div>
+                    <div id="edit-pa" class="edit-panel">
+                        <strong>Ganti Pemain (4 Pria):</strong>
+                        <div id="grid-pa" class="player-grid"></div>
+                        <button class="btn-action btn-add" onclick="applyEdit('pa')">Update</button>
+                    </div>
+                    <div style="display:flex; gap:5px;"><input type="number" id="sc-pa-1" placeholder="S1"><input type="number" id="sc-pa-2" placeholder="S2"></div>
+                    <button class="btn-action btn-save" onclick="saveScore('pa')">Simpan Skor</button>
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button class="btn-action btn-tool" onclick="shuffleMatch('pa')">Acak</button>
+                        <button class="btn-action btn-tool" onclick="toggleEdit('pa')">Edit</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top:30px; text-align:center;">Leaderboard</h3>
+            <table id="lb">
+                <thead>
+                    <tr>
+                        <th>Nama</th>
+                        <th>Mnt</th>
+                        <th>W</th>
+                        <th>L</th>
+                        <th>Poin</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody"></tbody>
+            </table>
+
+            <button class="btn-action btn-tool" style="margin-top:20px; background:var(--dark);" onclick="toggleHistory()">Lihat Riwayat Pertandingan</button>
+            <div id="historySection" class="history-section">
+                <h4>Riwayat Pertandingan</h4>
+                <div id="historyContent"> Belum ada data.</div>
+            </div>
+
+            <button onclick="if(confirm('Reset semua data?')) { localStorage.clear(); location.reload(); }" style="color:red; margin-top:40px; border:none; background:none; text-decoration:underline; width:100%; cursor:pointer;">Reset Sesi</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let players = {}; 
+    let queueXD = []; 
+    let queuePA = []; 
+    let currentMatch = { xd: [], pa: [] };
+    let matchHistory = [];
+
+    function showSection(t) {
+        document.getElementById('sectionManual').classList.toggle('hidden', t !== 'manual');
+        document.getElementById('sectionPaste').classList.toggle('hidden', t !== 'paste');
+        document.getElementById('tabManual').classList.toggle('active', t === 'manual');
+        document.getElementById('tabPaste').classList.toggle('active', t === 'paste');
+    }
+
+    function addNewPlayer() {
+        const n = document.getElementById('pName').value.trim();
+        const g = document.querySelector('input[name="pGender"]:checked').value;
+        const s = document.querySelector('input[name="pSkill"]:checked').value;
+        if(n && !players[n]) { 
+            players[n] = { name: n, gender: g, skill: s, played: 0, wins: 0, losses: 0, points: 0 }; 
+            renderPrev(); 
+        }
+        document.getElementById('pName').value = '';
+    }
+
+    function renderPrev() {
+        const c = document.getElementById('playerPreview');
+        c.innerHTML = Object.keys(players).map(k => `<div>${k} (${players[k].gender}) <span onclick="delete players['${k}']; renderPrev()" style="color:red; cursor:pointer">x</span></div>`).join('');
+    }
+
+    function startApp() {
+        const raw = document.getElementById('rawNames').value;
+        if(raw.trim()) {
+            raw.split(/[,\n]/).forEach(n => {
+                let name = n.trim(); if(!name) return;
+                let isF = name.toLowerCase().includes('cewe');
+                let clean = name.replace(/cewe/i, '').trim();
+                if(!players[clean]) players[clean] = { name: clean, gender: isF?'Wanita':'Pria', skill:'Beginner', played:0, wins:0, losses:0, points:0 };
+            });
+        }
+        if(Object.keys(players).length < 4) return alert("Min 4 pemain");
+        buildQueues();
+        document.getElementById('setupSection').classList.add('hidden');
+        document.getElementById('mainGame').classList.remove('hidden');
+        refreshMatch('xd'); refreshMatch('pa'); updateLB(); save();
+    }
+
+    function buildQueues() {
+        let all = Object.values(players);
+        let f = all.filter(p => p.gender === 'Wanita');
+        let m = all.filter(p => p.gender === 'Pria').sort(() => Math.random() - 0.5);
+        let mForXD = m.splice(0, f.length);
+        f.forEach((c, i) => queueXD.push([c.name, mForXD[i].name]));
+        for(let i=0; i<m.length; i+=2) { if(m[i+1]) queuePA.push([m[i].name, m[i+1].name]); }
+    }
+
+    function shuffleMatch(c) {
+        let q = c === 'xd' ? queueXD : queuePA;
+        if(currentMatch[c].length) q.push(...currentMatch[c]);
+        q.sort(() => Math.random() - 0.5);
+        refreshMatch(c);
+    }
+
+    function toggleEdit(c) {
+        const p = document.getElementById(`edit-${c}`);
+        const isOp = p.style.display !== 'block';
+        p.style.display = isOp ? 'block' : 'none';
+        if(isOp) {
+            const grid = document.getElementById(`grid-${c}`);
+            grid.innerHTML = '';
+            Object.keys(players).sort().forEach(n => {
+                const div = document.createElement('div');
+                div.className = `p-opt ${currentMatch[c].flat().includes(n) ? 'selected' : ''}`;
+                div.innerText = `${n} (${players[n].gender[0]})`;
+                div.onclick = () => div.classList.toggle('selected');
+                grid.appendChild(div);
+            });
+        }
+    }
+
+    function applyEdit(c) {
+        const sel = Array.from(document.querySelectorAll(`#grid-${c} .selected`)).map(e => e.innerText.split(' (')[0]);
+        if(sel.length !== 4) return alert("Pilih 4 orang");
+        if(c === 'xd') {
+            const f = sel.filter(n => players[n].gender === 'Wanita');
+            const m = sel.filter(n => players[n].gender === 'Pria');
+            if(f.length !== 2 || m.length !== 2) return alert("Harus 2 Pria & 2 Wanita");
+            currentMatch.xd = [[f[0], m[0]], [f[1], m[1]]];
+        } else {
+            if(sel.some(n => players[n].gender === 'Wanita')) return alert("Men Double hanya untuk Pria");
+            currentMatch.pa = [[sel[0], sel[1]], [sel[2], sel[3]]];
+        }
+        document.getElementById(`edit-${c}`).style.display = 'none';
+        displayMatch(c); save();
+    }
+
+    function refreshMatch(c) {
+        let q = c === 'xd' ? queueXD : queuePA;
+        if(q.length >= 2) { currentMatch[c] = [q.shift(), q.shift()]; displayMatch(c); }
+    }
+
+    function displayMatch(c) {
+        const m = currentMatch[c];
+        document.getElementById(`display-${c}`).innerHTML = `${m[0][0]} & ${m[0][1]} <br>vs<br> ${m[1][0]} & ${m[1][1]}`;
+    }
+
+    function saveScore(c) {
+        const s1 = parseInt(document.getElementById(`sc-${c}-1`).value);
+        const s2 = parseInt(document.getElementById(`sc-${c}-2`).value);
+        
+        if (isNaN(s1) || isNaN(s2)) return alert("Masukkan skor kedua tim");
+
+        const t = currentMatch[c];
+        const matchName = c === 'xd' ? 'Mix Double' : 'Men Double';
+
+        // Update Stats
+        [...t[0], ...t[1]].forEach(p => players[p].played++);
+        
+        t[0].forEach(p => {
+            players[p].points += s1;
+            if(s1 > s2) players[p].wins++;
+            else if(s1 < s2) players[p].losses++;
+        });
+
+        t[1].forEach(p => {
+            players[p].points += s2;
+            if(s2 > s1) players[p].wins++;
+            else if(s2 < s1) players[p].losses++;
+        });
+
+        // Add to History
+        matchHistory.unshift({
+            type: matchName,
+            t1: `${t[0][0]} & ${t[0][1]}`,
+            t2: `${t[1][0]} & ${t[1][1]}`,
+            s1: s1,
+            s2: s2
+        });
+
+        (c === 'xd' ? queueXD : queuePA).push(t[0], t[1]);
+        
+        document.getElementById(`sc-${c}-1`).value = '';
+        document.getElementById(`sc-${c}-2`).value = '';
+        
+        refreshMatch(c); 
+        updateLB(); 
+        updateHistoryUI();
+        save();
+    }
+
+    function updateLB() {
+        const s = Object.values(players).sort((a,b) => b.points - a.points || b.wins - a.wins);
+        document.getElementById('leaderboardBody').innerHTML = s.map(p => `
+            <tr class="${p.gender==='Wanita'?'bg-wanita':'bg-pria'}">
+                <td style="text-align:left">${p.name}</td>
+                <td>${p.played}</td>
+                <td style="color:var(--win)">${p.wins}</td>
+                <td style="color:var(--loss)">${p.losses}</td>
+                <td><b>${p.points}</b></td>
+            </tr>`).join('');
+    }
+
+    function toggleHistory() {
+        const h = document.getElementById('historySection');
+        h.style.display = h.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateHistoryUI() {
+        const container = document.getElementById('historyContent');
+        if(matchHistory.length === 0) return;
+        container.innerHTML = matchHistory.map(m => `
+            <div class="history-item">
+                <strong>[${m.type}]</strong> ${m.t1} (${m.s1}) vs ${m.t2} (${m.s2})
+            </div>
+        `).join('');
+    }
+
+    function save() { 
+        const data = {players, queueXD, queuePA, currentMatch, matchHistory};
+        localStorage.setItem('pb_pro_data', JSON.stringify(data)); 
+    }
+
+    window.onload = () => {
+        const d = JSON.parse(localStorage.getItem('pb_pro_data'));
+        if(d) {
+            players = d.players; 
+            queueXD = d.queueXD; 
+            queuePA = d.queuePA; 
+            currentMatch = d.currentMatch;
+            matchHistory = d.matchHistory || [];
+            
+            document.getElementById('setupSection').classList.add('hidden');
+            document.getElementById('mainGame').classList.remove('hidden');
+            displayMatch('xd'); 
+            displayMatch('pa'); 
+            updateLB();
+            updateHistoryUI();
+        }
+    }
+</script>
+</body>
+</html>
