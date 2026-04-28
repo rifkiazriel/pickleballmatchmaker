@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pickleball Match Maker - Live</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root { --primary: #2ecc71; --secondary: #3498db; --dark: #2c3e50; --light: #f4f7f6; --win: #27ae60; --loss: #e74c3c; }
+        html, body { overscroll-behavior-y: contain; overflow-x: hidden; position: fixed; width: 100%; height: 100%; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: var(--light); color: var(--dark); }
+        .app-scroll-area { height: 100vh; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 15px; box-sizing: border-box; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .tab-container { display: flex; gap: 10px; margin-bottom: 20px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; background: #ddd; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .tab-btn.active { background: var(--secondary); color: white; }
+        .setup-card { background: #f9f9f9; padding: 15px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 0.85em; }
+        input[type="text"], input[type="number"], textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; }
+        .option-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .option-group label { flex: 1; min-width: 70px; text-align: center; cursor: pointer; }
+        .option-group input { display: none; }
+        .option-btn { display: block; padding: 8px; background: white; border: 2px solid #ddd; border-radius: 8px; font-size: 0.85em; }
+        .option-group input:checked + .option-btn { border-color: var(--secondary); background: var(--secondary); color: white; font-weight: bold; }
+        .court-container { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 20px; }
+        @media(min-width: 600px) { .court-container { grid-template-columns: 1fr 1fr; } }
+        .court { border-top: 8px solid var(--primary); background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
+        .court.blue { border-top-color: var(--secondary); }
+        .match-box { background: #f0f2f5; border-radius: 8px; padding: 12px; margin: 10px 0; font-weight: bold; min-height: 40px; }
+        .edit-panel { display: none; background: #fff; padding: 10px; border: 2px solid #ffe58f; border-radius: 8px; margin-top: 10px; text-align: left; }
+        .player-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; max-height: 150px; overflow-y: auto; margin: 10px 0; font-size: 0.8em; }
+        .p-opt { padding: 8px; border-radius: 4px; background: #f9f9f9; border: 1px solid #eee; cursor: pointer; }
+        .p-opt.selected { background: #e8f5e9; border-color: var(--primary); font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.8em; }
+        th, td { padding: 8px; text-align: center; border-bottom: 1px solid #eee; }
+        th { background: var(--dark); color: white; }
+        .bg-pria { background-color: #f0faff !important; }
+        .bg-wanita { background-color: #fff0f3 !important; }
+        button.btn-action { cursor: pointer; padding: 12px; border: none; border-radius: 8px; font-weight: bold; width: 100%; margin-top: 5px; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-start { background: var(--dark); color: white; }
+        .btn-save { background: var(--primary); color: white; }
+        .btn-tool { background: #95a5a6; color: white; font-size: 0.75em; padding: 8px; }
+        .history-section { margin-top: 30px; padding: 15px; background: #eee; border-radius: 10px; display: none; }
+        .history-item { background: white; padding: 8px; margin-bottom: 5px; border-radius: 5px; font-size: 0.85em; border-left: 5px solid var(--secondary); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="app-scroll-area">
+    <div class="container">
+        <h1 style="text-align: center;">Pickleball Live Maker</h1>
+
+        <div id="setupSection">
+            <div class="tab-container">
+                <button class="tab-btn active" id="tabManual" onclick="showSection('manual')">Input Manual</button>
+                <button class="tab-btn" id="tabPaste" onclick="showSection('paste')">Paste Nama</button>
+            </div>
+            <div id="sectionManual" class="setup-card">
+                <input type="text" id="pName" placeholder="Nama Pemain..." style="margin-bottom:10px;">
+                <div class="input-group"><label>Gender</label><div class="option-group">
+                    <label><input type="radio" name="pGender" value="Pria" checked><span class="option-btn">Pria</span></label>
+                    <label><input type="radio" name="pGender" value="Wanita"><span class="option-btn">Wanita</span></label>
+                </div></div>
+                <button class="btn-action btn-add" onclick="addNewPlayer()">Tambah</button>
+                <div id="playerPreview" style="margin-top:10px; font-size:0.8em;"></div>
+            </div>
+            <div id="sectionPaste" class="setup-card hidden">
+                <textarea id="rawNames" placeholder="Contoh: Andi, Siti cewe..."></textarea>
+            </div>
+            <button class="btn-action btn-start" onclick="startApp()">Aktifkan Sesi Live</button>
+        </div>
+
+        <div id="mainGame" class="hidden">
+            <div class="court-container">
+                <div class="court">
+                    <h3>Mix Double</h3>
+                    <div id="display-xd" class="match-box">Menunggu Data...</div>
+                    <div id="edit-xd" class="edit-panel">
+                        <strong>Ganti Pemain (2 Pria, 2 Wanita):</strong>
+                        <div id="grid-xd" class="player-grid"></div>
+                        <button class="btn-action btn-add" onclick="applyEdit('xd')">Update</button>
+                    </div>
+                    <div style="display:flex; gap:5px;"><input type="number" id="sc-xd-1" placeholder="S1"><input type="number" id="sc-xd-2" placeholder="S2"></div>
+                    <button class="btn-action btn-save" onclick="saveScore('xd')">Simpan Skor</button>
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button class="btn-action btn-tool" onclick="shuffleMatch('xd')">Acak</button>
+                        <button class="btn-action btn-tool" onclick="toggleEdit('xd')">Edit</button>
+                    </div>
+                </div>
+
+                <div class="court blue">
+                    <h3>Men Double</h3>
+                    <div id="display-pa" class="match-box">Menunggu Data...</div>
+                    <div id="edit-pa" class="edit-panel">
+                        <strong>Ganti Pemain (4 Pria):</strong>
+                        <div id="grid-pa" class="player-grid"></div>
+                        <button class="btn-action btn-add" onclick="applyEdit('pa')">Update</button>
+                    </div>
+                    <div style="display:flex; gap:5px;"><input type="number" id="sc-pa-1" placeholder="S1"><input type="number" id="sc-pa-2" placeholder="S2"></div>
+                    <button class="btn-action btn-save" onclick="saveScore('pa')">Simpan Skor</button>
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button class="btn-action btn-tool" onclick="shuffleMatch('pa')">Acak</button>
+                        <button class="btn-action btn-tool" onclick="toggleEdit('pa')">Edit</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="margin-top:30px; text-align:center;">Live Leaderboard</h3>
+            <table>
+                <thead><tr><th>Nama</th><th>Mnt</th><th>W</th><th>L</th><th>Poin</th></tr></thead>
+                <tbody id="leaderboardBody"></tbody>
+            </table>
+
+            <button class="btn-action btn-tool" style="margin-top:20px; background:var(--dark);" onclick="toggleHistory()">Lihat Riwayat Pertandingan</button>
+            <div id="historySection" class="history-section">
+                <h4>Riwayat Pertandingan</h4>
+                <div id="historyContent">Belum ada data.</div>
+            </div>
+
+            <button onclick="resetSemua()" style="color:red; margin-top:40px; border:none; background:none; text-decoration:underline; width:100%; cursor:pointer;">Reset Sesi Semua User</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- KONFIGURASI FIREBASE ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyAq2mAsj2HROtdtSK2z7E28QDw-0SB1N4U",
+        authDomain: "pickle-ball-match-maker.firebaseapp.com",
+        databaseURL: "https://pickle-ball-match-maker-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "pickle-ball-match-maker",
+        storageBucket: "pickle-ball-match-maker.appspot.com",
+        messagingSenderId: "732417592658",
+        appId: "1:732417592658:web:481af8920477d50b89be8b"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database().ref('pickleball_live');
+
+    let players = {}; 
+    let queueXD = []; 
+    let queuePA = []; 
+    let currentMatch = { xd: [['?', '?'], ['?', '?']], pa: [['?', '?'], ['?', '?']] };
+    let matchHistory = [];
+
+    // --- FUNGSI CORE ---
+
+    // Sinkronisasi data dari Firebase secara Real-time
+    db.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            players = data.players || {};
+            queueXD = data.queueXD || [];
+            queuePA = data.queuePA || [];
+            currentMatch = data.currentMatch || { xd: [['?', '?'], ['?', '?']], pa: [['?', '?'], ['?', '?']] };
+            matchHistory = data.matchHistory || [];
+
+            document.getElementById('setupSection').classList.add('hidden');
+            document.getElementById('mainGame').classList.remove('hidden');
+            
+            displayMatch('xd');
+            displayMatch('pa');
+            updateLB();
+            updateHistoryUI();
+        } else {
+            // Jika data di Firebase kosong, tampilkan layar setup
+            document.getElementById('setupSection').classList.remove('hidden');
+            document.getElementById('mainGame').classList.add('hidden');
+        }
+    });
+
+    function saveToFirebase() {
+        db.set({ players, queueXD, queuePA, currentMatch, matchHistory });
+    }
+
+    function showSection(t) {
+        document.getElementById('sectionManual').classList.toggle('hidden', t !== 'manual');
+        document.getElementById('sectionPaste').classList.toggle('hidden', t !== 'paste');
+        document.getElementById('tabManual').classList.toggle('active', t === 'manual');
+        document.getElementById('tabPaste').classList.toggle('active', t === 'paste');
+    }
+
+    function addNewPlayer() {
+        const n = document.getElementById('pName').value.trim();
+        const g = document.querySelector('input[name="pGender"]:checked').value;
+        if(n && !players[n]) { 
+            players[n] = { name: n, gender: g, played: 0, wins: 0, losses: 0, points: 0 }; 
+            renderPrev(); 
+        }
+        document.getElementById('pName').value = '';
+    }
+
+    function renderPrev() {
+        const c = document.getElementById('playerPreview');
+        c.innerHTML = Object.keys(players).map(k => `<div>${k} (${players[k].gender})</div>`).join('');
+    }
+
+    function startApp() {
+        const raw = document.getElementById('rawNames').value;
+        if(raw.trim()) {
+            raw.split(/[,\n]/).forEach(n => {
+                let name = n.trim(); if(!name) return;
+                let isF = name.toLowerCase().includes('cewe');
+                let clean = name.replace(/cewe/i, '').trim();
+                if(!players[clean]) players[clean] = { name: clean, gender: isF?'Wanita':'Pria', played:0, wins:0, losses:0, points:0 };
+            });
+        }
+        if(Object.keys(players).length < 4) return alert("Min 4 pemain");
+        
+        buildQueues();
+        refreshMatch('xd');
+        refreshMatch('pa');
+        saveToFirebase();
+    }
+
+    function buildQueues() {
+        let all = Object.values(players);
+        let f = all.filter(p => p.gender === 'Wanita');
+        let m = all.filter(p => p.gender === 'Pria').sort(() => Math.random() - 0.5);
+        
+        let mForXD = m.splice(0, f.length);
+        f.forEach((c, i) => queueXD.push([c.name, mForXD[i].name]));
+        for(let i=0; i<m.length; i+=2) { if(m[i+1]) queuePA.push([m[i].name, m[i+1].name]); }
+    }
+
+    function displayMatch(c) {
+        const m = currentMatch[c];
+        if(!m || !m[0]) return;
+        document.getElementById(`display-${c}`).innerHTML = `${m[0][0]} & ${m[0][1]} <br>vs<br> ${m[1][0]} & ${m[1][1]}`;
+    }
+
+    function saveScore(c) {
+        const s1 = parseInt(document.getElementById(`sc-${c}-1`).value);
+        const s2 = parseInt(document.getElementById(`sc-${c}-2`).value);
+        if (isNaN(s1) || isNaN(s2)) return alert("Masukkan skor");
+
+        const t = currentMatch[c];
+        [...t[0], ...t[1]].forEach(p => { if(players[p]) players[p].played++ });
+        
+        t[0].forEach(p => {
+            if(!players[p]) return;
+            players[p].points += s1;
+            if(s1 > s2) players[p].wins++; else if(s1 < s2) players[p].losses++;
+        });
+        t[1].forEach(p => {
+            if(!players[p]) return;
+            players[p].points += s2;
+            if(s2 > s1) players[p].wins++; else if(s2 < s1) players[p].losses++;
+        });
+
+        matchHistory.unshift({ type: c.toUpperCase(), t1: `${t[0][0]}&${t[0][1]}`, t2: `${t[1][0]}&${t[1][1]}`, s1, s2 });
+        (c === 'xd' ? queueXD : queuePA).push(t[0], t[1]);
+        
+        document.getElementById(`sc-${c}-1`).value = '';
+        document.getElementById(`sc-${c}-2`).value = '';
+        
+        refreshMatch(c);
+        saveToFirebase();
+    }
+
+    function refreshMatch(c) {
+        let q = c === 'xd' ? queueXD : queuePA;
+        if(q.length >= 2) { currentMatch[c] = [q.shift(), q.shift()]; }
+    }
+
+    function updateLB() {
+        const s = Object.values(players).sort((a,b) => b.points - a.points || b.wins - a.wins);
+        document.getElementById('leaderboardBody').innerHTML = s.map(p => `
+            <tr class="${p.gender==='Wanita'?'bg-wanita':'bg-pria'}">
+                <td style="text-align:left">${p.name}</td><td>${p.played}</td>
+                <td style="color:var(--win)">${p.wins}</td><td style="color:var(--loss)">${p.losses}</td>
+                <td><b>${p.points}</b></td>
+            </tr>`).join('');
+    }
+
+    function shuffleMatch(c) {
+        let q = c === 'xd' ? queueXD : queuePA;
+        q.push(...currentMatch[c]);
+        q.sort(() => Math.random() - 0.5);
+        currentMatch[c] = [q.shift(), q.shift()];
+        saveToFirebase();
+    }
+
+    function toggleEdit(c) {
+        const p = document.getElementById(`edit-${c}`);
+        p.style.display = p.style.display === 'block' ? 'none' : 'block';
+        if(p.style.display === 'block') {
+            const grid = document.getElementById(`grid-${c}`);
+            grid.innerHTML = Object.keys(players).sort().map(n => 
+                `<div class="p-opt ${currentMatch[c].flat().includes(n)?'selected':''}" onclick="this.classList.toggle('selected')">${n}</div>`
+            ).join('');
+        }
+    }
+
+    function applyEdit(c) {
+        const sel = Array.from(document.querySelectorAll(`#grid-${c} .selected`)).map(e => e.innerText);
+        if(sel.length !== 4) return alert("Pilih 4 orang");
+        currentMatch[c] = [[sel[0], sel[1]], [sel[2], sel[3]]];
+        document.getElementById(`edit-${c}`).style.display = 'none';
+        saveToFirebase();
+    }
+
+    function toggleHistory() {
+        const h = document.getElementById('historySection');
+        h.style.display = h.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function updateHistoryUI() {
+        document.getElementById('historyContent').innerHTML = matchHistory.map(m => 
+            `<div class="history-item"><strong>[${m.type}]</strong> ${m.t1} (${m.s1}) vs ${m.t2} (${m.s2})</div>`
+        ).join('') || 'Belum ada data.';
+    }
+
+    function resetSemua() {
+        if(confirm('Hapus SEMUA data untuk SEMUA orang?')) {
+            db.remove();
+            location.reload();
+        }
+    }
+</script>
+</body>
+</html>
